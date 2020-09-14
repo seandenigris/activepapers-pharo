@@ -4,12 +4,13 @@ Trait {
 }
 
 { #category : #accessing }
-TAPWiki classSide >> createOrRetrieveWikiPageNamed: aSymbol [
-	|  pageName |
-	pageName := self normalizeWikiPageName: aSymbol. 
-	^ (self wikiPageNamed: name)
-		ifNil: [ ^ (APWikiPage wiki: self name: pageName text: self initialWikiPageContents) store ]
-
+TAPWiki classSide >> createOrRetrieveWikiPageNamed: aString [
+	^ (self wikiPageNamed: aString)
+		ifNil: [ 
+			(APWikiPage
+				wiki: self
+				name: aString
+				text: self initialWikiPageContents) store ]
 ]
 
 { #category : #inspecting }
@@ -51,8 +52,10 @@ TAPWiki classSide >> initialWikiPageContents [
 ]
 
 { #category : #accessing }
-TAPWiki classSide >> methodSelectorForWikiPageNamed: aSymbol [
-	^ ('wikiPage', (self normalizeWikiPageName: aSymbol)) asSymbol
+TAPWiki classSide >> methodSelectorForWikiPageNamed: aString [
+	| safeName |
+	safeName := aString copyReplaceAll: ' ' with: '_'.
+	^ ('wikiPage', safeName) asSymbol
 ]
 
 { #category : #accessing }
@@ -66,23 +69,21 @@ TAPWiki classSide >> removeWikiPageNamed: aSymbol [
 ]
 
 { #category : #accessing }
-TAPWiki classSide >> store: aString inWikiPageNamed: aSymbol [
-	| pageName code |
-
-	pageName := self normalizeWikiPageName: aSymbol. 
+TAPWiki classSide >> store: contentString inWikiPageNamed: pageName [
+	| code |
 
 	pageName = #Main
-		ifTrue: [ self comment: aString. ^ self ].
+		ifTrue: [ self comment: contentString. ^ self ].
 
 	code := String streamContents: [ :s |
-		s nextPutAll: (self methodSelectorForWikiPageNamed: aSymbol).
+		s nextPutAll: (self methodSelectorForWikiPageNamed: pageName).
 		s crtab; nextPutAll: '"This method was automatically generated."'.
 		s crtab; nextPutAll: '<wikiPage: '; nextPutAll: pageName storeString; nextPutAll: '>'.
 		s crtab; nextPutAll: '^APWikiPage'.
 		s crtab: 2; nextPutAll: 'wiki: self'.
 		s crtab: 2; nextPutAll: 'name: '; nextPutAll: pageName storeString.
 		s crtab: 2; nextPutAll: 'text: '.
-		s cr; nextPutAll: aString storeString.
+		s cr; nextPutAll: contentString storeString.
 	].
 
 	self class compile: code classified: 'wikiPages'.
@@ -96,12 +97,10 @@ TAPWiki classSide >> wikiEvaluationReceiverForPage: aSymbol [
 ]
 
 { #category : #accessing }
-TAPWiki classSide >> wikiPageNamed: aSymbol [
-	|  pageName |
-	pageName := self normalizeWikiPageName: aSymbol. 
-	pageName = #Main
-		ifTrue: [ ^ APWikiPage wiki: self name: pageName text: self comment ].
-	^ [ self perform: (self methodSelectorForWikiPageNamed: pageName) ]
+TAPWiki classSide >> wikiPageNamed: aString [
+	aString = #Main
+		ifTrue: [ ^ APWikiPage wiki: self name: aString text: self comment ].
+	^ [ self perform: (self methodSelectorForWikiPageNamed: aString) ]
 		on: MessageNotUnderstood do: [ nil ]
 		
 ]
